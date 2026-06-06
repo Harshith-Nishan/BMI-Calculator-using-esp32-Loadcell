@@ -1,0 +1,176 @@
+#include <WiFi.h> 
+#include <Wire.h>
+
+//int  D5=5;
+//int D18=18;
+const int buzzer =D8;
+
+const char* ssid = "Ty"; 
+const char* password = "123456789::";
+
+WiFiServer server(80);
+
+String header;
+
+
+// for ultrasound
+// edited by Harshith
+//formula to cm to feet    cm/30.48
+ const int con=30.48;
+ float ft=0;
+ 
+
+// Maximum distance we want to ping for (in centimeters). here 800 cm
+#define max_distance 400 ; //400 cm max
+
+const int trigPin = D9;
+const int echoPin = D10;
+long duration;
+int distance;
+int distance1;
+//int speakerPin = D13;
+
+
+
+void setup() 
+{
+
+// for ultrasound
+  Serial.begin(9600); 
+  
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+
+
+pinMode(buzzer,OUTPUT);
+
+
+
+  
+  // esp code start
+Serial.begin(9600);
+
+
+Serial.print("Connecting to Wifi Network");
+Serial.println(ssid);
+WiFi.begin(ssid, password);
+while (WiFi.status() != WL_CONNECTED) {
+delay(500);
+Serial.print(".");
+}
+Serial.println("");
+Serial.println("Successfully connected to WiFi.");
+Serial.println("IP address of ESP8266 D1 is : ");
+Serial.println(WiFi.localIP());
+server.begin();
+Serial.println("Server started");
+// esp code end
+}
+
+void loop() {
+
+
+// Write a pulse to the HC-SR04 Trigger Pin
+  digitalWrite(trigPin, LOW);
+  //delay(1000);
+ delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+   //delay(1000);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  
+  // Measure the response from the HC-SR04 Echo Pin
+  duration = pulseIn(echoPin, HIGH);
+  
+  // Determine distance from duration
+  // Use 343 metres per second as speed of sound
+  distance= duration*0.034/2;
+  distance1= 180 - distance ;
+  // Prints "Distance: <value>" on the first line of the LCD
+
+  if (distance1 > 6) {
+   tone (buzzer,1000);
+   delay(1000);
+  
+   } else {
+    noTone (buzzer);
+    delay(1000);
+
+  }
+  
+ 
+  if(distance1 < 0 ) {
+    Serial.print(" Neutral Please Stand to Calculate Height");
+     Serial.print("\n");
+  }
+  else
+  {
+   Serial.print("HEIGHT: ");
+  Serial.print("\n");
+  Serial.print(distance1  );
+  Serial.print("  cm  ");
+  ft=distance1/30.48;
+  Serial.print(ft);
+  Serial.print("  feet  ");
+  Serial.print("\n");
+  }
+
+
+  delay(100);
+
+//////////////////////////////////////////////////////////////////////////////////////////
+
+
+Serial.println();
+delay(500);
+WiFiClient client = server.available();
+
+if (client) 
+{ 
+Serial.println("Web Client connected ");
+String request = client.readStringUntil('\r'); 
+client.println("HTTP/1.1 200 OK");
+client.println("Content-type:text/html");
+client.println("Connection: close");
+client.println();
+client.println("<!DOCTYPE html><html>");
+client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
+client.println("<link rel=\"icon\" href=\"data:,\">");
+client.println("</style></head><body><h1>Welcome </h1>");
+client.println("<h2>Height Data</h2>");
+client.println("<table><tr><th></th><th></th></tr>");
+client.println("<tr><td></td><td><span class=\"sensor\">");
+
+client.println(" </span></td></tr>"); 
+client.println("<tr><td></td><td><span class=\"sensor\">");
+//client.println ("<p> if(distance1 < 30 ){</p>");
+ //client.println("<p>console.log(' Neutral Please Stand to Calculate Height')}</p>");
+ //delay(500);
+//client.println("<p>console.clear()</p>");
+client.println(" </span></td></tr>"); 
+client.println(ft);
+client.println("<tr><td>feet</td><td><span class=\"sensor\">");
+
+
+client.println(" </span></td></tr>");
+client.println(" <script> window.setInterval('refresh()', 1000)");    // Call a function every 10000 milliseconds // (OR 10 seconds).  // Refresh or reload page.
+   
+
+   
+   client.println ("function refresh() {");
+    client.println   (" window .location.reload();"); 
+      
+client.println("} </script>");
+client.println("</body></html>"); 
+client.println();
+
+
+
+
+
+
+Serial.println("Client disconnected.");
+Serial.println("");
+}
+}
